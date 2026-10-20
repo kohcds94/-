@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>バンドレコーダー</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --card-border: #2c2c2c;
+      --accent-blue: #2563eb;
+      --accent-blue-hover: #1d4ed8;
+      --accent-red: #dc2626;
+      --text-main: #f3f4f6;
+      --text-sub: #9ca3af;
+      --control-bg: #2a2a2a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .tabs {
+      display: flex;
+      background-color: #0a0a0a;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 16px;
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--accent-blue);
+      border-bottom-color: var(--accent-blue);
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      padding: 16px;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    #rec-tab {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      justify-content: flex-start;
+      padding-top: 10px;
+    }
+
+    #rec-tab.active {
+      display: flex;
+    }
+
+    .mode-selector {
+      display: flex;
+      background: var(--card-bg);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-sub);
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: var(--accent-blue);
+      color: white;
+    }
+
+    .timer-container {
+      text-align: center;
+      padding: 10px 0 0 0;
+    }
+
+    .timer-display {
+      font-size: 52px;
+      font-weight: 700;
+      font-family: monospace;
+      letter-spacing: 2px;
+    }
+
+    .vu-meter-container {
+      width: 100%;
+      height: 4px;
+      background: #2a2a2a;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .vu-meter-bar {
+      height: 100%;
+      width: 0%;
+      background: #10b981;
+      transition: width 0.05s ease;
+    }
+
+    .rec-controls {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-sq {
+      flex: 1;
+      aspect-ratio: 1;
+      max-height: 180px;
+      border-radius: 20px;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    .btn-sq:active { transform: scale(0.96); }
+    .btn-sq:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .btn-rec { background-color: var(--accent-red); }
+    .btn-stop { background-color: var(--control-bg); border: 1px solid var(--card-border); color: var(--text-sub); }
+    .btn-stop.active { color: white; }
+
+    .icon-shape {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-group label {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .input-control {
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .input-control:focus { border-color: var(--accent-blue); }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-primary { background: var(--accent-blue); color: white; }
+    .btn-secondary { background: var(--control-bg); color: var(--text-main); }
+
+    .folder-select-container { margin-bottom: 16px; }
+
+    .player-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .player-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .player-title {
+      font-size: 15px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .player-folder-select {
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .player-seek {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .seek-bar { flex: 1; accent-color: var(--accent-blue); }
+    .time-text { font-size: 12px; color: var(--text-sub); font-family: monospace; }
+
+    .player-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .play-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--accent-blue);
+      border: none;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .tool-btns { display: flex; gap: 8px; }
+
+    .tool-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: var(--control-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .tool-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: white;
+    }
+
+    .btn-danger { color: #ef4444; }
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    .file-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .file-item.selected { border-color: var(--accent-blue); }
+
+    .file-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    .file-name { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-meta { font-size: 12px; color: var(--text-sub); }
+  </style>
+</head>
+<body>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('rec')">録音</button>
+    <button class="tab-btn" onclick="switchTab('list')">ファイルリスト</button>
+  </div>
+
+  <!-- 録音タブ -->
+  <div id="rec-tab" class="tab-content active">
+    <div class="mode-selector">
+      <button class="mode-btn active" id="btn-mode-band" onclick="setGainMode('band')">バンド</button>
+      <button class="mode-btn" id="btn-mode-aco" onclick="setGainMode('acoustic')">アコースティック</button>
+    </div>
+
+    <div class="timer-container">
+      <div class="timer-display" id="timer">00:00:00</div>
+    </div>
+
+    <div class="vu-meter-container">
+      <div class="vu-meter-bar" id="vu-bar"></div>
+    </div>
+
+    <div class="rec-controls">
+      <button class="btn-sq btn-rec" id="btn-rec-toggle" onclick="toggleRecording()">
+        <div class="icon-shape" id="rec-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+        </div>
+        <span id="rec-status-text">録音</span>
+      </button>
+
+      <button class="btn-sq btn-stop" id="btn-stop" onclick="stopRecording()" disabled>
+        <div class="icon-shape">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        </div>
+        <span>停止保存</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ファイルリストタブ -->
+  <div id="list-tab" class="tab-content">
+    <div class="folder-select-container">
+      <select class="input-control" id="filter-folder" style="width: 100%;" onchange="renderFileList()">
+        <option value="ALL">すべてのフォルダ</option>
+      </select>
+    </div>
+
+    <div class="player-card" id="player-card" style="display: none;">
+      <div class="player-title-row">
+        <div class="player-title" id="player-title">-</div>
+        <!-- プレイヤー上から直接フォルダ移動できるセレクトボックス -->
+        <select class="player-folder-select" id="player-folder-select" onchange="changeFileFolder(this.value)">
+        </select>
+      </div>
+
+      <div class="player-seek">
+        <span class="time-text" id="play-time-current">00:00:00</span>
+        <input type="range" class="seek-bar" id="seek-bar" value="0" min="0" max="100" oninput="onSeekInput(this.value)">
+        <span class="time-text" id="play-time-duration">00:00:00</span>
+      </div>
+      <div class="player-controls">
+        <button class="play-btn" id="btn-play-toggle" onclick="togglePlay()">
+          <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+
+        <div class="tool-btns">
+          <button class="tool-btn" id="btn-tool-cut" onclick="toggleCut()">カット</button>
+          <button class="tool-btn" id="btn-tool-eq" onclick="toggleEQ()">EQ</button>
+          <button class="tool-btn" onclick="shareOrDownloadCurrentFile()" title="共有・保存">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="tool-btn btn-danger" onclick="confirmDeleteCurrentFile()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="file-list" id="file-list"></div>
+  </div>
+
+  <!-- 保存用モーダル -->
+  <div class="modal" id="save-modal">
+    <div class="modal-content">
+      <h3>録音の保存</h3>
+      <div class="input-group">
+        <label>タイトル</label>
+        <input type="text" class="input-control" id="save-title" placeholder="タイトルを入力">
+      </div>
+      <div class="input-group">
+        <label>フォルダ選択</label>
+        <select class="input-control" id="save-folder-select" onchange="onFolderSelectChange(this.value)">
+        </select>
+      </div>
+      <div class="input-group" id="new-folder-group" style="display: none;">
+        <label>新規フォルダ名</label>
+        <input type="text" class="input-control" id="save-new-folder" placeholder="フォルダ名を入力">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" onclick="closeSaveModal()">破棄</button>
+        <button class="btn-action btn-primary" onclick="saveRecording()">保存</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    let currentTab = 'rec';
+    let gainMode = 'band';
+    let isRecording = false;
+    let isPaused = false;
+    
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let audioCtx = null;
+    let micStream = null;
+    let gainNode = null;
+    let analyserNode = null;
+    let vuAnimId = null;
+    
+    let recStartTime = 0;
+    let recElapsed = 0;
+    let timerInterval = null;
+
+    let folders = ['Default', '練習', 'ライブ'];
+    let files = []; 
+    let recordedBlob = null;
+    let currentRecDuration = 0;
+
+    let selectedFileId = null;
+    let playerAudio = new Audio();
+    let playerAudioCtx = null;
+    let playerSourceNode = null;
+    let eqNodes = [];
+    let isEQOn = false;
+    let isCutOn = false;
+    let originalBuffer = null;
+    let processedBlobUrl = null;
+
+    const EQ_SETTINGS = [
+      { f: 60,   g: 3.0 },
+      { f: 230,  g: 1.5 },
+      { f: 910,  g: 0.0 },
+      { f: 3000, g: -1.5 },
+      { f: 14000,g: -3.0 }
+    ];
+
+    let db = null;
+    const dbName = "BandRecorderDB";
+    const storeName = "recordings";
+
+    function initDB() {
+      const request = indexedDB.open(dbName, 1);
+      request.onerror = () => console.error("IndexedDB initialization error");
+      request.onsuccess = (e) => {
+        db = e.target.result;
+        loadFromDB();
+      };
+      request.onupgradeneeded = (e) => {
+        const database = e.target.result;
+        if (!database.objectStoreNames.contains(storeName)) {
+          database.createObjectStore(storeName, { keyPath: "id" });
+        }
+        if (!database.objectStoreNames.contains("meta")) {
+          database.createObjectStore("meta", { keyPath: "key" });
+        }
+      };
+    }
+
+    function saveToDB(fileObj) {
+      if (!db) return;
+      const tx = db.transaction([storeName, "meta"], "readwrite");
+      tx.objectStore(storeName).put(fileObj);
+      tx.objectStore("meta").put({ key: "folders", value: folders });
+    }
+
+    function deleteFromDB(id) {
+      if (!db) return;
+      const tx = db.transaction([storeName, "meta"], "readwrite");
+      tx.objectStore(storeName).delete(id);
+      tx.objectStore("meta").put({ key: "folders", value: folders });
+    }
+
+    function loadFromDB() {
+      if (!db) return;
+      const tx = db.transaction([storeName, "meta"], "readonly");
+      
+      const reqFolders = tx.objectStore("meta").get("folders");
+      reqFolders.onsuccess = () => {
+        if (reqFolders.result && reqFolders.result.value) {
+          folders = reqFolders.result.value;
+        }
+      };
+
+      const reqFiles = tx.objectStore(storeName).getAll();
+      reqFiles.onsuccess = () => {
+        if (reqFiles.result) {
+          files = reqFiles.result.sort((a, b) => Number(b.id) - Number(a.id));
+        }
+      };
+    }
+
+    initDB();
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      if (tab === 'rec') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('rec-tab').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('list-tab').classList.add('active');
+        renderFileList();
+      }
+    }
+
+    function setGainMode(mode) {
+      gainMode = mode;
+      document.getElementById('btn-mode-band').classList.toggle('active', mode === 'band');
+      document.getElementById('btn-mode-aco').classList.toggle('active', mode === 'acoustic');
+      
+      if (gainNode) {
+        gainNode.gain.value = (gainMode === 'band') ? 1.0 : 1.5;
+      }
+    }
+
+    function formatTime(totalSec) {
+      if (isNaN(totalSec) || totalSec === Infinity) return "00:00:00";
+      const h = Math.floor(totalSec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
+      const s = Math.floor(totalSec % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    async function toggleRecording() {
+      if (!isRecording) {
+        await startRecording();
+      } else if (isPaused) {
+        resumeRecording();
+      } else {
+        pauseRecording();
+      }
+    }
+
+    async function startRecording() {
+      try {
+        let audioConstraint = {
+          autoGainControl: false,
+          echoCancellation: false,
+          noiseSuppression: false
+        };
+
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioInputs = devices.filter(d => d.kind === 'audioinput');
+            const externalMic = audioInputs.find(d => 
+              !d.label.toLowerCase().includes('built-in') && 
+              !d.label.toLowerCase().includes('internal') &&
+              !d.label.toLowerCase().includes('内蔵') &&
+              d.deviceId !== 'default'
+            );
+            if (externalMic) {
+              audioConstraint.deviceId = { exact: externalMic.deviceId };
+            }
+          } catch (e) {
+            console.log("Device enumeration fallback:", e);
+          }
+        }
+
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
+        
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(micStream);
+        
+        gainNode = audioCtx.createGain();
+        gainNode.gain.value = (gainMode === 'band') ? 1.0 : 1.5;
+        
+        analyserNode = audioCtx.createAnalyser();
+        analyserNode.fftSize = 256;
+        
+        const dest = audioCtx.createMediaStreamDestination();
+        
+        source.connect(gainNode);
+        gainNode.connect(analyserNode);
+        gainNode.connect(dest);
+
+        let mimeType = 'audio/webm';
+        if (!MediaRecorder.isTypeSupported('audio/webm')) {
+          mimeType = '';
+        }
+
+        mediaRecorder = new MediaRecorder(dest.stream, mimeType ? { mimeType } : {});
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.start(100);
+        isRecording = true;
+        isPaused = false;
+        
+        recElapsed = 0;
+        recStartTime = Date.now();
+        startTimer();
+        updateVUMeter();
+
+        updateRecUI();
+      } catch (err) {
+        alert("マイクへのアクセスが拒否されたか、対応していないブラウザです。");
+      }
+    }
+    function pauseRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.pause();
+        isPaused = true;
+        clearInterval(timerInterval);
+        updateRecUI();
+      }
+    }
+
+    function resumeRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'paused') {
+        mediaRecorder.resume();
+        isPaused = false;
+        recStartTime = Date.now() - recElapsed;
+        startTimer();
+        updateRecUI();
+      }
+    }
+
+    function stopRecording() {
+      if (!isRecording) return;
+      
+      mediaRecorder.stop();
+      clearInterval(timerInterval);
+      cancelAnimationFrame(vuAnimId);
+      document.getElementById('vu-bar').style.width = '0%';
+      
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+      
+      currentRecDuration = Math.floor(recElapsed / 1000);
+
+      mediaRecorder.onstop = () => {
+        recordedBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+        openSaveModal();
+        
+        isRecording = false;
+        isPaused = false;
+        recElapsed = 0;
+        document.getElementById('timer').innerText = "00:00:00";
+        updateRecUI();
+      };
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        recElapsed = Date.now() - recStartTime;
+        document.getElementById('timer').innerText = formatTime(Math.floor(recElapsed / 1000));
+      }, 200);
+    }
+
+    function updateVUMeter() {
+      if (!isRecording) return;
+      const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
+      analyserNode.getByteFrequencyData(dataArray);
+      
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+      }
+      let average = sum / dataArray.length;
+      let pct = Math.min(100, Math.max(0, (average / 128) * 100));
+      document.getElementById('vu-bar').style.width = pct + '%';
+
+      vuAnimId = requestAnimationFrame(updateVUMeter);
+    }
+
+    function updateRecUI() {
+      const recBtn = document.getElementById('btn-rec-toggle');
+      const stopBtn = document.getElementById('btn-stop');
+      const statusText = document.getElementById('rec-status-text');
+      const recIcon = document.getElementById('rec-icon');
+
+      if (!isRecording) {
+        recBtn.style.backgroundColor = 'var(--accent-red)';
+        statusText.innerText = '録音';
+        recIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>`;
+        stopBtn.disabled = true;
+        stopBtn.classList.remove('active');
+      } else if (isPaused) {
+        recBtn.style.backgroundColor = 'var(--accent-blue)';
+        statusText.innerText = '再開';
+        recIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+        stopBtn.disabled = false;
+        stopBtn.classList.add('active');
+      } else {
+        recBtn.style.backgroundColor = '#eab308';
+        statusText.innerText = '一時停止';
+        recIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>`;
+        stopBtn.disabled = false;
+        stopBtn.classList.add('active');
+      }
+    }
+
+    function openSaveModal() {
+      document.getElementById('save-title').value = '';
+      const select = document.getElementById('save-folder-select');
+      select.innerHTML = '';
+      
+      folders.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.innerText = f;
+        select.appendChild(opt);
+      });
+      
+      const newOpt = document.createElement('option');
+      newOpt.value = '__NEW__';
+      newOpt.innerText = '+ 新規フォルダ追加...';
+      select.appendChild(newOpt);
+
+      document.getElementById('new-folder-group').style.display = 'none';
+      document.getElementById('save-new-folder').value = '';
+      
+      document.getElementById('save-modal').style.display = 'flex';
+    }
+
+    function onFolderSelectChange(val) {
+      document.getElementById('new-folder-group').style.display = (val === '__NEW__') ? 'flex' : 'none';
+    }
+
+    function closeSaveModal() {
+      document.getElementById('save-modal').style.display = 'none';
+      recordedBlob = null;
+    }
+
+    function saveRecording() {
+      let title = document.getElementById('save-title').value.trim();
+      if (!title) title = '無題';
+      
+      let folderVal = document.getElementById('save-folder-select').value;
+      if (folderVal === '__NEW__') {
+        const newFold = document.getElementById('save-new-folder').value.trim();
+        if (newFold) {
+          folderVal = newFold;
+          if (!folders.includes(folderVal)) folders.push(folderVal);
+        } else {
+          folderVal = 'Default';
+        }
+      }
+
+      const now = new Date();
+      const YYYY = now.getFullYear();
+      const MM = String(now.getMonth() + 1).padStart(2, '0');
+      const DD = String(now.getDate()).padStart(2, '0');
+      const YYYYMMDD = `${YYYY}${MM}${DD}`;
+      const dateStr = `${YYYY}-${MM}-${DD}`;
+
+      const fileObj = {
+        id: Date.now().toString(),
+        title: title,
+        folder: folderVal,
+        dateStr: dateStr,
+        YYYYMMDD: YYYYMMDD,
+        blob: recordedBlob,
+        durationSec: currentRecDuration
+      };
+
+      files.unshift(fileObj);
+      saveToDB(fileObj);
+      closeSaveModal();
+      switchTab('list');
+    }
+
+    function renderFileList() {
+      const filterFolder = document.getElementById('filter-folder');
+      const curFilter = filterFolder.value;
+      
+      filterFolder.innerHTML = '<option value="ALL">すべてのフォルダ</option>';
+      folders.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.innerText = f;
+        filterFolder.appendChild(opt);
+      });
+      filterFolder.value = curFilter || 'ALL';
+
+      const listContainer = document.getElementById('file-list');
+      listContainer.innerHTML = '';
+
+      const filtered = files.filter(f => filterFolder.value === 'ALL' || f.folder === filterFolder.value);
+
+      filtered.forEach(file => {
+        const fullName = `${file.title}_${file.folder}_${file.YYYYMMDD}`;
+        const item = document.createElement('div');
+        item.className = 'file-item' + (selectedFileId === file.id ? ' selected' : '');
+        item.onclick = () => selectFile(file.id);
+
+        item.innerHTML = `
+          <div class="file-info">
+            <div class="file-name">${fullName}</div>
+            <div class="file-meta">${file.dateStr} &nbsp;•&nbsp; ${formatTime(file.durationSec)}</div>
+          </div>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    async function selectFile(id) {
+      if (selectedFileId === id) return;
+      selectedFileId = id;
+      
+      isEQOn = false;
+      isCutOn = false;
+      updateToolButtons();
+
+      const file = files.find(f => f.id === id);
+      if (!file) return;
+
+      document.getElementById('player-card').style.display = 'flex';
+      document.getElementById('player-title').innerText = `${file.title}_${file.folder}_${file.YYYYMMDD}`;
+      
+      // プレイヤー上のフォルダ選択セレクトボックスを構築
+      const playerFolderSelect = document.getElementById('player-folder-select');
+      playerFolderSelect.innerHTML = '';
+      folders.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.innerText = f;
+        if (f === file.folder) opt.selected = true;
+        playerFolderSelect.appendChild(opt);
+      });
+
+      const arrayBuffer = await file.blob.arrayBuffer();
+      const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+      originalBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+
+      loadAudioFromBuffer(originalBuffer);
+      renderFileList();
+    }
+
+    // ファイルリスト（プレイヤー上）からフォルダを変更する関数
+    function changeFileFolder(newFolder) {
+      if (!selectedFileId) return;
+      const file = files.find(f => f.id === selectedFileId);
+      if (!file) return;
+
+      file.folder = newFolder;
+      document.getElementById('player-title').innerText = `${file.title}_${file.folder}_${file.YYYYMMDD}`;
+      
+      saveToDB(file); // データベースのデータを更新
+      renderFileList();
+    }
+
+    function loadAudioFromBuffer(buffer) {
+      const wavBlob = audioBufferToWavBlob(buffer);
+      if (processedBlobUrl) URL.revokeObjectURL(processedBlobUrl);
+      processedBlobUrl = URL.createObjectURL(wavBlob);
+      
+      playerAudio.src = processedBlobUrl;
+      playerAudio.onloadedmetadata = () => {
+        document.getElementById('play-time-duration').innerText = formatTime(playerAudio.duration);
+      };
+      playerAudio.ontimeupdate = () => {
+        document.getElementById('play-time-current').innerText = formatTime(playerAudio.currentTime);
+        if (playerAudio.duration) {
+          document.getElementById('seek-bar').value = (playerAudio.currentTime / playerAudio.duration) * 100;
+        }
+      };
+      playerAudio.onended = () => {
+        document.getElementById('play-icon').innerHTML = `<path d="M8 5v14l11-7z"/>`;
+      };
+
+      setupAudioNodes();
+    }
+
+    function setupAudioNodes() {
+      if (!playerAudioCtx) {
+        playerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        playerSourceNode = playerAudioCtx.createMediaElementSource(playerAudio);
+        
+        let prevNode = playerSourceNode;
+        eqNodes = EQ_SETTINGS.map(setting => {
+          const filter = playerAudioCtx.createBiquadFilter();
+          filter.type = 'peaking';
+          filter.frequency.value = setting.f;
+          filter.gain.value = 0;
+          filter.Q.value = 1.0;
+          prevNode.connect(filter);
+          prevNode = filter;
+          return filter;
+        });
+        prevNode.connect(playerAudioCtx.destination);
+      }
+    }
+
+    function togglePlay() {
+      if (!selectedFileId) return;
+      if (playerAudioCtx && playerAudioCtx.state === 'suspended') {
+        playerAudioCtx.resume();
+      }
+
+      if (playerAudio.paused) {
+        playerAudio.play();
+        document.getElementById('play-icon').innerHTML = `<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>`;
+      } else {
+        playerAudio.pause();
+        document.getElementById('play-icon').innerHTML = `<path d="M8 5v14l11-7z"/>`;
+      }
+    }
+
+    function onSeekInput(val) {
+      if (playerAudio.duration) {
+        playerAudio.currentTime = (val / 100) * playerAudio.duration;
+      }
+    }
+
+    function toggleEQ() {
+      if (!selectedFileId) return;
+      isEQOn = !isEQOn;
+      updateToolButtons();
+
+      eqNodes.forEach((node, idx) => {
+        node.gain.value = isEQOn ? EQ_SETTINGS[idx].g : 0;
+      });
+    }
+
+    function toggleCut() {
+      if (!selectedFileId || !originalBuffer) return;
+      isCutOn = !isCutOn;
+      updateToolButtons();
+
+      if (isCutOn) {
+        const trimmedBuffer = trimSilence(originalBuffer);
+        loadAudioFromBuffer(trimmedBuffer);
+      } else {
+        loadAudioFromBuffer(originalBuffer);
+      }
+    }
+
+    function updateToolButtons() {
+      document.getElementById('btn-tool-eq').classList.toggle('active', isEQOn);
+      document.getElementById('btn-tool-cut').classList.toggle('active', isCutOn);
+    }
+
+    function trimSilence(buffer) {
+      const channelData = buffer.getChannelData(0);
+      const sampleRate = buffer.sampleRate;
+      const threshold = 0.02;
+      
+      let start = 0;
+      let end = channelData.length - 1;
+
+      while (start < channelData.length && Math.abs(channelData[start]) < threshold) {
+        start++;
+      }
+      while (end > start && Math.abs(channelData[end]) < threshold) {
+        end--;
+      }
+
+      if (start >= end) return buffer;
+
+      const paddingStart = Math.floor(sampleRate * 1.0);
+      const paddingEnd = Math.floor(sampleRate * 3.0);
+
+      const newStart = Math.max(0, start - paddingStart);
+      const newEnd = Math.min(channelData.length - 1, end + paddingEnd);
+
+      const trimmedLength = newEnd - newStart + 1;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const newBuffer = ctx.createBuffer(buffer.numberOfChannels, trimmedLength, sampleRate);
+
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+        const data = buffer.getChannelData(ch);
+        newBuffer.getChannelData(ch).set(data.subarray(newStart, newEnd + 1));
+      }
+
+      return newBuffer;
+    }
+
+    async function shareOrDownloadCurrentFile() {
+      if (!selectedFileId) return;
+      const file = files.find(f => f.id === selectedFileId);
+      if (!file) return;
+
+      const fileName = `${file.title}_${file.folder}_${file.YYYYMMDD}.mp3`;
+      const blobToShare = processedBlobUrl ? await fetch(processedBlobUrl).then(r => r.blob()) : file.blob;
+      const fileObj = new File([blobToShare], fileName, { type: 'audio/mp3' });
+
+      if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
+        try {
+          await navigator.share({
+            files: [fileObj],
+            title: file.title,
+            text: 'バンド練習の録音ファイル'
+          });
+          return;
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.log("Share failed, fallback to download", err);
+          } else {
+            return;
+          }
+        }
+      }
+
+      const a = document.createElement('a');
+      a.href = processedBlobUrl || URL.createObjectURL(file.blob);
+      a.download = fileName;
+      a.click();
+    }
+
+    function confirmDeleteCurrentFile() {
+      if (!selectedFileId) return;
+      if (confirm("削除しますか？")) {
+        deleteFromDB(selectedFileId);
+        files = files.filter(f => f.id !== selectedFileId);
+        selectedFileId = null;
+        playerAudio.pause();
+        document.getElementById('player-card').style.display = 'none';
+        renderFileList();
+      }
+    }
+
+    function audioBufferToWavBlob(buffer) {
+      const numOfChan = buffer.numberOfChannels;
+      const length = buffer.length * numOfChan * 2 + 44;
+      const out = new DataView(new ArrayBuffer(length));
+      let channels = [], sampleRate = buffer.sampleRate, offset = 0, pos = 0;
+
+      function setUint16(data) { out.setUint16(pos, data, true); pos += 2; }
+      function setUint32(data) { out.setUint32(pos, data, true); pos += 4; }
+
+      setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
+      setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+      setUint32(sampleRate); setUint32(sampleRate * 2 * numOfChan);
+      setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164);
+      setUint32(length - pos - 4);
+
+      for (let i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+
+      while (offset < buffer.length) {
+        for (let i = 0; i < numOfChan; i++) {
+          let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+          out.setInt16(pos, sample, true); pos += 2;
+        }
+        offset++;
+      }
+      return new Blob([out], { type: 'audio/wav' });
+    }
+  </script>
+</body>
+</html>
