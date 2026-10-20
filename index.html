@@ -414,7 +414,6 @@
     <div class="player-card" id="player-card" style="display: none;">
       <div class="player-title-row">
         <div class="player-title" id="player-title">-</div>
-        <!-- プレイヤー上から直接フォルダ移動できるセレクトボックス -->
         <select class="player-folder-select" id="player-folder-select" onchange="changeFileFolder(this.value)">
         </select>
       </div>
@@ -611,31 +610,16 @@
 
     async function startRecording() {
       try {
-        let audioConstraint = {
-          autoGainControl: false,
-          echoCancellation: false,
-          noiseSuppression: false
+        // 自動検出を外し、ブラウザ/OS標準の音声入力を直接要求するシンプルな設定に変更
+        const constraints = {
+          audio: {
+            autoGainControl: false,
+            echoCancellation: false,
+            noiseSuppression: false
+          }
         };
 
-        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-          try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const audioInputs = devices.filter(d => d.kind === 'audioinput');
-            const externalMic = audioInputs.find(d => 
-              !d.label.toLowerCase().includes('built-in') && 
-              !d.label.toLowerCase().includes('internal') &&
-              !d.label.toLowerCase().includes('内蔵') &&
-              d.deviceId !== 'default'
-            );
-            if (externalMic) {
-              audioConstraint.deviceId = { exact: externalMic.deviceId };
-            }
-          } catch (e) {
-            console.log("Device enumeration fallback:", e);
-          }
-        }
-
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
+        micStream = await navigator.mediaDevices.getUserMedia(constraints);
         
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioCtx.createMediaStreamSource(micStream);
@@ -892,7 +876,6 @@
       document.getElementById('player-card').style.display = 'flex';
       document.getElementById('player-title').innerText = `${file.title}_${file.folder}_${file.YYYYMMDD}`;
       
-      // プレイヤー上のフォルダ選択セレクトボックスを構築
       const playerFolderSelect = document.getElementById('player-folder-select');
       playerFolderSelect.innerHTML = '';
       folders.forEach(f => {
@@ -911,7 +894,6 @@
       renderFileList();
     }
 
-    // ファイルリスト（プレイヤー上）からフォルダを変更する関数
     function changeFileFolder(newFolder) {
       if (!selectedFileId) return;
       const file = files.find(f => f.id === selectedFileId);
@@ -920,7 +902,7 @@
       file.folder = newFolder;
       document.getElementById('player-title').innerText = `${file.title}_${file.folder}_${file.YYYYMMDD}`;
       
-      saveToDB(file); // データベースのデータを更新
+      saveToDB(file);
       renderFileList();
     }
 
